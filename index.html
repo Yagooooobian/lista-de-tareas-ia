@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Lista de Tareas IA</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
-    /* Fondo gradiente suave */
     body {
       font-family: 'Segoe UI', Arial, sans-serif;
       margin: 40px;
@@ -16,7 +16,6 @@
       text-shadow: 0 2px 10px #f3e9ff1a;
       margin-bottom: 0.2em;
     }
-    /* Contador de tareas estilizado */
     #contador-tareas {
       font-size: 1.1em;
       color: #29117b;
@@ -51,14 +50,12 @@
     li:hover {
       background: #e9f2fc;
     }
-    /* Checkbox más grande y colorido */
     input[type="checkbox"] {
       transform: scale(1.35);
       accent-color: #54b4cb;
       cursor: pointer;
       margin-right: 4px;
     }
-    /* Botón de borrar más atractivo */
     button {
       background: linear-gradient(90deg,#fa6478,#fff0f1 90%);
       color: #4b2fa6;
@@ -76,7 +73,6 @@
       background: linear-gradient(90deg, #c90938 60%, #ffecec 100%);
       color: #fff;
     }
-    /* Input y botón principal mejorados */
     input[type="text"] {
       padding: 8px;
       border-radius: 5px;
@@ -107,109 +103,190 @@
     #agregar:hover {
       background: linear-gradient(93deg, #54b4cb 0%, #7051f5 70%);
     }
-    /* Responsive básico */
+    .editable {
+      outline: 2px solid #a4d1fc;
+      background: #e6f4ff;
+      border-radius: 2px;
+      padding: 2px 4px;
+    }
     @media (max-width: 630px) {
       body { margin: 7vw; }
       input[type="text"] { width: 70vw; }
       #contador-tareas { font-size: 1em; padding: 7px 8vw;}
     }
-
   </style>
 </head>
 <body>
   <h1>Lista de Tareas</h1>
-  <!-- Contador de tareas pendientes y completadas -->
-  <div id="contador-tareas">
+  <div id="contador-tareas" aria-live="polite" aria-atomic="true">
     Pendientes: <span id="pendientes">0</span> &nbsp;|&nbsp; Completadas: <span id="completadas">0</span>
   </div>
-
-  <form id="formulario-tarea">
-    <input type="text" id="nueva-tarea" placeholder="Escribe una nueva tarea..." required>
+  <form id="formulario-tarea" autocomplete="off">
+    <label for="nueva-tarea" class="visually-hidden">Nueva tarea:</label>
+    <input type="text" id="nueva-tarea" placeholder="Escribe una nueva tarea..." required aria-label="Nueva tarea">
     <button type="submit" id="agregar">Agregar</button>
   </form>
-
-  <ul id="lista-tareas"></ul>
-
+  <ul id="lista-tareas" role="list"></ul>
   <script>
-    // Selección de elementos del DOM
+    const STORAGE_KEY = 'tareas-ia-v2';
+
     const formulario = document.getElementById('formulario-tarea');
     const nuevaTareaInput = document.getElementById('nueva-tarea');
     const listaTareas = document.getElementById('lista-tareas');
     const pendientesSpan = document.getElementById('pendientes');
     const completadasSpan = document.getElementById('completadas');
 
-    /**
-     * Actualiza el contador de tareas pendientes y completadas.
-     */
-    function actualizarContadores() {
-      // Selecciona todos los elementos li (tareas)
-      const tareas = listaTareas.querySelectorAll('li');
+    // Utilidad: obtener tareas del localStorage
+    function obtenerTareas() {
+      try {
+        const tareas = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        return Array.isArray(tareas) ? tareas : [];
+      } catch {
+        return [];
+      }
+    }
+
+    // Utilidad: guardar tareas en localStorage
+    function guardarTareas(tareas) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tareas));
+    }
+
+    // Actualiza el DOM y contadores en base a tareas guardadas
+    function renderTareas() {
+      listaTareas.innerHTML = '';
+      const tareas = obtenerTareas();
       let pendientes = 0, completadas = 0;
+      tareas.forEach((tarea, idx) => {
+        const li = document.createElement('li');
+        // Checkbox
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = tarea.completada;
+        checkbox.id = `tarea-chk-${idx}`;
+        checkbox.setAttribute('aria-label', 'Marcar como completada');
+        if (tarea.completada) completadas++; else pendientes++;
 
-      tareas.forEach(li => {
-        const checkbox = li.querySelector('input[type="checkbox"]');
-        if (checkbox && checkbox.checked) {
-          completadas++;
-        } else {
-          pendientes++;
-        }
+        // Texto
+        const span = document.createElement('span');
+        span.textContent = tarea.texto;
+        if (tarea.completada) span.classList.add('tarea-completada');
+        // Edición en doble click
+        span.tabIndex = 0;
+        span.title = 'Haz doble clic para editar';
+        span.addEventListener('dblclick', editaTarea);
+        span.addEventListener('keydown', e => {
+          if(e.key === "Enter" || e.key === " ") editaTarea.call(span, e);
+        });
+
+        // Checkbox cambia estado
+        checkbox.addEventListener('change', function() {
+          tareas[idx].completada = this.checked;
+          guardarTareas(tareas);
+          renderTareas();
+        });
+
+        // Botón borrar
+        const borrarBtn = document.createElement('button');
+        borrarBtn.textContent = 'Borrar';
+        borrarBtn.title = 'Eliminar tarea';
+        borrarBtn.addEventListener('click', function() {
+          tareas.splice(idx, 1);
+          guardarTareas(tareas);
+          renderTareas();
+        });
+
+        li.appendChild(checkbox);
+        li.appendChild(span);
+        li.appendChild(borrarBtn);
+        listaTareas.appendChild(li);
       });
-
       pendientesSpan.textContent = pendientes;
       completadasSpan.textContent = completadas;
     }
 
-    /**
-     * Crea un elemento de tarea (li) nuevo, configurando sus eventos.
-     * @param {string} texto - El texto de la tarea a mostrar.
-     * @returns {HTMLElement} El elemento <li> de la tarea.
-     */
-    function crearElementoTarea(texto) {
-      const li = document.createElement('li');
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
+    // Editar tarea en sitio
+    function editaTarea(e) {
+      const span = e.currentTarget || e.target;
+      if (span.classList.contains('editable')) return;
+      const textoOriginal = span.textContent;
+      span.contentEditable = true;
+      span.classList.add('editable');
+      span.focus();
+      // Seleccionar texto entero
+      document.execCommand('selectAll', false, null);
 
-      const span = document.createElement('span');
-      span.textContent = texto;
+      function guardar() {
+        span.contentEditable = false;
+        span.classList.remove('editable');
+        const nuevoTexto = span.textContent.trim();
+        const tareas = obtenerTareas();
+        const idx = Array.prototype.indexOf.call(listaTareas.children, span.parentNode);
+        if (nuevoTexto && nuevoTexto !== textoOriginal) {
+          tareas[idx].texto = nuevoTexto;
+        } else if (!nuevoTexto) {
+          // Si borra todo, se borra la tarea
+          tareas.splice(idx, 1);
+        }
+        guardarTareas(tareas);
+        renderTareas();
+      }
 
-      // Cambia el estilo al completar/descompletar la tarea
-      checkbox.addEventListener('change', function() {
-        span.classList.toggle('tarea-completada', this.checked);
-        actualizarContadores();
+      function cancelarEdicion(evt) {
+        if(evt.type === "keydown" && evt.key !== "Enter")return;
+        span.textContent = textoOriginal;
+        span.contentEditable = false;
+        span.classList.remove('editable');
+      }
+
+      // Eventos para guardar/cancelar
+      span.addEventListener('blur', guardar, {once:true});
+      span.addEventListener('keydown', function(evt){
+        if(evt.key === "Enter") {
+          evt.preventDefault();
+          guardar();
+        }
+        if(evt.key === "Escape") {
+          evt.preventDefault();
+          cancelarEdicion(evt);
+        }
       });
-
-      // Botón para borrar la tarea
-      const borrarBtn = document.createElement('button');
-      borrarBtn.textContent = 'Borrar';
-      borrarBtn.title = 'Eliminar tarea';
-
-      borrarBtn.addEventListener('click', function() {
-        listaTareas.removeChild(li);
-        actualizarContadores();
-      });
-
-      li.appendChild(checkbox);
-      li.appendChild(span);
-      li.appendChild(borrarBtn);
-
-      return li;
     }
 
-    // Evento submit para agregar nuevas tareas
+    // Añadir nueva tarea
     formulario.addEventListener('submit', function(e) {
       e.preventDefault();
       const textoTarea = nuevaTareaInput.value.trim();
-      if (textoTarea !== "") {
-        const nuevaTarea = crearElementoTarea(textoTarea);
-        listaTareas.appendChild(nuevaTarea);
-        nuevaTareaInput.value = "";
-        nuevaTareaInput.focus();
-        actualizarContadores();
+      if (!textoTarea) return;
+      const tareas = obtenerTareas();
+      tareas.push({ texto: textoTarea, completada: false });
+      guardarTareas(tareas);
+      nuevaTareaInput.value = "";
+      nuevaTareaInput.focus();
+      renderTareas();
+    });
+
+    // Accesibilidad: tecla Enter en campo input agrega tarea
+    nuevaTareaInput.addEventListener('keyup', function(e){
+      if(e.key === "Enter"){
+        formulario.requestSubmit(); // Compatible browsers
       }
     });
 
-    // Inicializa el contador por si acaso
-    actualizarContadores();
+    // Primera carga
+    renderTareas();
   </script>
+  <style>
+    /* Visual oculto para label accesible */
+    .visually-hidden {
+      position: absolute !important;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      border: 0;
+    }
+  </style>
 </body>
 </html>
