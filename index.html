@@ -4,64 +4,124 @@
   <meta charset="UTF-8">
   <title>Lista de Tareas IA</title>
   <style>
+    /* Fondo gradiente suave */
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Arial, sans-serif;
       margin: 40px;
-      background: #f0f0f0;
+      background: linear-gradient(120deg, #fdf6fd 0%, #e3f1fc 100%);
+      min-height: 100vh;
     }
     h1 {
-      color: #333;
+      color: #4b2fa6;
+      text-shadow: 0 2px 10px #f3e9ff1a;
+      margin-bottom: 0.2em;
+    }
+    /* Contador de tareas estilizado */
+    #contador-tareas {
+      font-size: 1.1em;
+      color: #29117b;
+      background: #c6dbfa;
+      display: inline-block;
+      border-radius: 8px;
+      padding: 7px 20px;
+      margin-bottom: 20px;
+      box-shadow: 0px 2px 8px #4b2fa618;
     }
     .tarea-completada {
       text-decoration: line-through;
-      color: #aaa;
+      color: #b1b1b1;
+      transition: color 0.3s, text-decoration 0.3s;
     }
     ul {
       list-style: none;
       padding-left: 0;
+      margin-top: 18px;
     }
     li {
       padding: 8px 0;
       display: flex;
       align-items: center;
-      gap: 10px;
-      border-bottom: 1px solid #ddd;
+      gap: 12px;
+      border-bottom: 1px solid #e0e0ef;
+      background: #ffffffb6;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      transition: background 0.2s;
     }
-    button {
-      background: #e74c3c;
-      color: white;
-      border: none;
-      border-radius: 3px;
-      padding: 5px 10px;
+    li:hover {
+      background: #e9f2fc;
+    }
+    /* Checkbox más grande y colorido */
+    input[type="checkbox"] {
+      transform: scale(1.35);
+      accent-color: #54b4cb;
       cursor: pointer;
+      margin-right: 4px;
+    }
+    /* Botón de borrar más atractivo */
+    button {
+      background: linear-gradient(90deg,#fa6478,#fff0f1 90%);
+      color: #4b2fa6;
+      border: none;
+      border-radius: 5px;
+      padding: 5px 13px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-left: auto;
+      font-size: 0.95em;
+      box-shadow: 0 2px 6px #fa64782a;
+      transition: background 0.18s, color 0.15s;
     }
     button:hover {
-      background: #c0392b;
+      background: linear-gradient(90deg, #c90938 60%, #ffecec 100%);
+      color: #fff;
     }
+    /* Input y botón principal mejorados */
     input[type="text"] {
-      padding: 7px;
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      margin-right: 8px;
+      padding: 8px;
+      border-radius: 5px;
+      border: 1.5px solid #cbb3fc;
+      margin-right: 10px;
       width: 220px;
       font-size: 1em;
+      background: #f4f1fd;
+      color: #271c53;
+      outline: none;
+      transition: border .17s;
+    }
+    input[type="text"]:focus {
+      border-color: #7b47d3;
     }
     #agregar {
-      background: #2ecc71;
+      background: linear-gradient(93deg, #7051f5 80%, #54b4cb 100%);
       color: white;
       border: none;
-      border-radius: 3px;
-      padding: 7px 14px;
+      border-radius: 5px;
+      padding: 9px 17px;
       cursor: pointer;
       font-size: 1em;
+      font-weight: 600;
+      box-shadow: 0 2px 10px #54b4cb14;
+      transition: background 0.17s;
     }
     #agregar:hover {
-      background: #27ae60;
+      background: linear-gradient(93deg, #54b4cb 0%, #7051f5 70%);
     }
+    /* Responsive básico */
+    @media (max-width: 630px) {
+      body { margin: 7vw; }
+      input[type="text"] { width: 70vw; }
+      #contador-tareas { font-size: 1em; padding: 7px 8vw;}
+    }
+
   </style>
 </head>
 <body>
   <h1>Lista de Tareas</h1>
+  <!-- Contador de tareas pendientes y completadas -->
+  <div id="contador-tareas">
+    Pendientes: <span id="pendientes">0</span> &nbsp;|&nbsp; Completadas: <span id="completadas">0</span>
+  </div>
 
   <form id="formulario-tarea">
     <input type="text" id="nueva-tarea" placeholder="Escribe una nueva tarea..." required>
@@ -71,10 +131,39 @@
   <ul id="lista-tareas"></ul>
 
   <script>
+    // Selección de elementos del DOM
     const formulario = document.getElementById('formulario-tarea');
     const nuevaTareaInput = document.getElementById('nueva-tarea');
     const listaTareas = document.getElementById('lista-tareas');
+    const pendientesSpan = document.getElementById('pendientes');
+    const completadasSpan = document.getElementById('completadas');
 
+    /**
+     * Actualiza el contador de tareas pendientes y completadas.
+     */
+    function actualizarContadores() {
+      // Selecciona todos los elementos li (tareas)
+      const tareas = listaTareas.querySelectorAll('li');
+      let pendientes = 0, completadas = 0;
+
+      tareas.forEach(li => {
+        const checkbox = li.querySelector('input[type="checkbox"]');
+        if (checkbox && checkbox.checked) {
+          completadas++;
+        } else {
+          pendientes++;
+        }
+      });
+
+      pendientesSpan.textContent = pendientes;
+      completadasSpan.textContent = completadas;
+    }
+
+    /**
+     * Crea un elemento de tarea (li) nuevo, configurando sus eventos.
+     * @param {string} texto - El texto de la tarea a mostrar.
+     * @returns {HTMLElement} El elemento <li> de la tarea.
+     */
     function crearElementoTarea(texto) {
       const li = document.createElement('li');
       const checkbox = document.createElement('input');
@@ -83,16 +172,20 @@
       const span = document.createElement('span');
       span.textContent = texto;
 
-      // Cambia el estilo si está marcada como completada
+      // Cambia el estilo al completar/descompletar la tarea
       checkbox.addEventListener('change', function() {
         span.classList.toggle('tarea-completada', this.checked);
+        actualizarContadores();
       });
 
+      // Botón para borrar la tarea
       const borrarBtn = document.createElement('button');
       borrarBtn.textContent = 'Borrar';
+      borrarBtn.title = 'Eliminar tarea';
 
       borrarBtn.addEventListener('click', function() {
         listaTareas.removeChild(li);
+        actualizarContadores();
       });
 
       li.appendChild(checkbox);
@@ -102,6 +195,7 @@
       return li;
     }
 
+    // Evento submit para agregar nuevas tareas
     formulario.addEventListener('submit', function(e) {
       e.preventDefault();
       const textoTarea = nuevaTareaInput.value.trim();
@@ -110,8 +204,12 @@
         listaTareas.appendChild(nuevaTarea);
         nuevaTareaInput.value = "";
         nuevaTareaInput.focus();
+        actualizarContadores();
       }
     });
+
+    // Inicializa el contador por si acaso
+    actualizarContadores();
   </script>
 </body>
 </html>
